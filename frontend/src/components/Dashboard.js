@@ -1,6 +1,7 @@
 import React from "react";
-
+import useAuth from "../useAuth";
 const Dashboard = (props) => {
+  const token = useAuth(props.code);
   return <div>{props.code}</div>;
 };
 
