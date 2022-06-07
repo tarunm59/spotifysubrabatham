@@ -5,7 +5,10 @@ const AUTH_URL =
 
 export default function Login() {
   return (
-    <Container className="d-flex justify-content-center">
+    <Container
+      style={{ height: "100vh" }}
+      className="d-flex justify-content-center align-items-center"
+    >
       <Button href={AUTH_URL}>Login with spotify</Button>
     </Container>
   );
