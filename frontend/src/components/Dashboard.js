@@ -47,6 +47,7 @@ const Dashboard = (props) => {
             title: track.name,
             uri: track.uri,
             albumImageUrl: smallAlbumImage.url,
+            duration: track.duration_ms,
           };
         })
       );
