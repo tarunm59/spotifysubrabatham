@@ -1,13 +1,12 @@
 import React from "react";
 
-const TrackSearchResult = ({ track }) => {
+const TrackSearchResult = ({ track,choose }) => {
   let minutes = track.duration / 60000;
   let seconds = 60 * (minutes - Math.floor(minutes));
   minutes = Math.floor(minutes);
   seconds = Math.floor(seconds);
   const handlePlay = () => {
-    // function that handles playing the song.
-    // Tarun look here.
+    choose(track);
   };
   return (
     <div
