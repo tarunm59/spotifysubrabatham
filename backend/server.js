@@ -1,15 +1,22 @@
- const express = require("express");
+require('dotenv').config() 
+const express = require("express");
 const cors = require("cors");
 const SpotifyWebApi = require("spotify-web-api-node");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken")
 const app = express();
+
 app.use(cors());
 app.use(bodyParser.json());
-const users = [1,2,3];
+app.use(express.json());
+const users = [];
 // app.use(bodyParser.urlencoded({ extended: true }));
-app.get('/allhosts',(req,res)=>{
-  res.json(users)
+app.get('/hosts',authtoken,(req,res)=>{
+  
+  
+  res.json(users.filter((user)=>{return user.name===req.user.name}));
+
 });
 app.post('/addhost',async (req,res)=>
 {
@@ -21,7 +28,7 @@ app.post('/addhost',async (req,res)=>
     const hashed= await bcrypt.hash(req.body.password,salt);
     const user = {name:req.body.name, password : hashed}
     users.push(user);
-    console.log(users)
+    
     res.status(200).send();
   }
   catch
@@ -43,6 +50,9 @@ app.post('/allhosts/login',async(req,res)=>
   try{
     if (await bcrypt.compare(req.body.password,user.password))  
     {
+      
+      const jwt_access_token =jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)
+      res.json({jwt_access_token:jwt_access_token});
       res.send("Success Joining Party as Host");
     } 
     else
@@ -55,6 +65,25 @@ app.post('/allhosts/login',async(req,res)=>
     res.status(400).send();
   }
 });
+function authtoken(req,res,next)
+{
+  const authHeader = req.headers['authorization'];
+  const token =authHeader &&  authHeader.split(' ')[1];
+  
+  if (token==null)
+  {
+    res.sendStatus(401);
+  }
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,user)=>{
+    if (err)
+    {
+      return res.sendStatus(403);
+    }
+    req.user = user;
+    next();
+    
+  })
+}
 app.post("/refresh", (req, res) => {
   const refreshToken = req.body.refreshToken;
   const spotifyApi = new SpotifyWebApi({
