@@ -10,11 +10,11 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
-const users = [];
+const users = [];//basically a database to be created
 // app.use(bodyParser.urlencoded({ extended: true }));
 app.get('/hosts',authtoken,(req,res)=>{
   
-  
+  //database.filter instead.. dont use name cuz we might not need
   res.json(users.filter((user)=>{return user.name===req.user.name}));
 
 });
@@ -28,7 +28,7 @@ app.post('/addhost',async (req,res)=>
     const hashed= await bcrypt.hash(req.body.password,salt);
     const user = {name:req.body.name, password : hashed}
     users.push(user);
-    
+    //replace this section with database.push
     res.status(200).send();
   }
   catch
@@ -38,9 +38,9 @@ app.post('/addhost',async (req,res)=>
   }
   
 });
-app.post('/allhosts/login',async(req,res)=>
+app.post('/allhosts/logon',async(req,res)=>
 {
-  
+  //rplace with database.find
   const user = users.find ((user ) => (user.name==req.body.name));
   if (!user)
   {
@@ -48,11 +48,11 @@ app.post('/allhosts/login',async(req,res)=>
 
   }
   try{
-    if (await bcrypt.compare(req.body.password,user.password))  
+    if (await bcrypt.compare(req.body.password,user.password))  //credentials are good to go
     {
       
       const jwt_access_token =jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)
-      res.json({jwt_access_token:jwt_access_token});
+      res.json({jwt_access_token:jwt_access_token});//might need to remove
       res.send("Success Joining Party as Host");
     } 
     else
