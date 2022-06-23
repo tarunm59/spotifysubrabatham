@@ -12,11 +12,37 @@ app.use(bodyParser.json());
 app.use(express.json());
 const users = [];//basically a database to be created
 // app.use(bodyParser.urlencoded({ extended: true }));
+let refreshtokenshost = []
 app.get('/hosts',authtoken,(req,res)=>{
   
   //database.filter instead.. dont use name cuz we might not need
   res.json(users.filter((user)=>{return user.name===req.user.name}));
 
+});
+app.delete('/hostlogout',(req,res)=>{
+ const updated = refreshtokenshost.filter((el)=>{return el!==req.body.token});
+  refreshtokenshost = updated;
+  res.sendStatus(204);
+});
+app.post('/checktoken', (req,res)=>{
+   const rtoken = req.body.token;
+   if (!rtoken)
+   {
+    return res.sendStatus(401);
+   }
+   if (!refreshtokenshost.includes(rtoken))
+   {
+      return res.sendStatus(403);
+   }
+   jwt.verify(rtoken,process.env.REFRESH_TOKEN_SECRET,(err,user)=>{
+    if (err)
+    {
+      return res.sendStatus(403);
+
+    }
+    const accessToken = genaccess({name:user.name})
+    res.json({accessToken:accessToken});
+   })
 });
 app.post('/addhost',async (req,res)=>
 {
@@ -38,7 +64,7 @@ app.post('/addhost',async (req,res)=>
   }
   
 });
-app.post('/allhosts/logon',async(req,res)=>
+app.post('/allhosts/login',async(req,res)=>
 {
   //rplace with database.find
   const user = users.find ((user ) => (user.name==req.body.name));
@@ -51,8 +77,10 @@ app.post('/allhosts/logon',async(req,res)=>
     if (await bcrypt.compare(req.body.password,user.password))  //credentials are good to go
     {
       
-      const jwt_access_token =jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)
-      res.json({jwt_access_token:jwt_access_token});//might need to remove
+      const jwt_access_token =genaccess(user);
+      const jwt_refresh_token = jwt.sign(user,process.env.REFRESH_TOKEN_SECRET);
+      refreshtokenshost.push(jwt_refresh_token);
+      res.json({jwt_access_token:jwt_access_token,jwt_refresh_token:jwt_refresh_token});//might need to remove
       res.send("Success Joining Party as Host");
     } 
     else
@@ -65,6 +93,10 @@ app.post('/allhosts/logon',async(req,res)=>
     res.status(400).send();
   }
 });
+function genaccess(user)
+{
+  return jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{expiresIn:'172800s'});
+}
 function authtoken(req,res,next)
 {
   const authHeader = req.headers['authorization'];
