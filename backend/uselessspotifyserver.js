@@ -1,121 +1,110 @@
-require('dotenv').config() 
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const SpotifyWebApi = require("spotify-web-api-node");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
-const users = [];//basically a database to be created
+const users = []; //basically a database to be created
 // app.use(bodyParser.urlencoded({ extended: true }));
-let refreshtokenshost = []
-app.get('/hosts',authtoken,(req,res)=>{
-  
+let refreshtokenshost = [];
+app.get("/hosts", authtoken, (req, res) => {
   //database.filter instead.. dont use name cuz we might not need
-  res.json(users.filter((user)=>{return user.name===req.user.name}));
-
+  res.json(
+    users.filter((user) => {
+      return user.name === req.user.name;
+    })
+  );
 });
-app.delete('/hostlogout',(req,res)=>{
- const updated = refreshtokenshost.filter((el)=>{return el!==req.body.token});
+app.delete("/hostlogout", (req, res) => {
+  const updated = refreshtokenshost.filter((el) => {
+    return el !== req.body.token;
+  });
   refreshtokenshost = updated;
   res.sendStatus(204);
 });
-app.post('/checktoken', (req,res)=>{
-   const rtoken = req.body.token;
-   if (!rtoken)
-   {
+app.post("/checktoken", (req, res) => {
+  const rtoken = req.body.token;
+  if (!rtoken) {
     return res.sendStatus(401);
-   }
-   if (!refreshtokenshost.includes(rtoken))
-   {
+  }
+  if (!refreshtokenshost.includes(rtoken)) {
+    return res.sendStatus(403);
+  }
+  jwt.verify(rtoken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+    if (err) {
       return res.sendStatus(403);
-   }
-   jwt.verify(rtoken,process.env.REFRESH_TOKEN_SECRET,(err,user)=>{
-    if (err)
-    {
-      return res.sendStatus(403);
-
     }
-    const accessToken = genaccess({name:user.name})
-    res.json({accessToken:accessToken});
-   })
+    const accessToken = genaccess({ name: user.name });
+    res.json({ accessToken: accessToken });
+  });
 });
-app.post('/addhost',async (req,res)=>
-{
-  try
-  {
-
+app.post("/addhost", async (req, res) => {
+  try {
     const salt = await bcrypt.genSalt();
 
-    const hashed= await bcrypt.hash(req.body.password,salt);
-    const user = {name:req.body.name, password : hashed}
+    const hashed = await bcrypt.hash(req.body.password, salt);
+    const user = { name: req.body.name, password: hashed };
     users.push(user);
     //replace this section with database.push
     res.status(200).send();
-  }
-  catch
-  {
-    
+  } catch {
     res.status(400).send();
   }
-  
 });
-app.post('/allhosts/login',async(req,res)=>
-{
+app.post("/allhosts/login", async (req, res) => {
   //rplace with database.find
-  const user = users.find ((user ) => (user.name==req.body.name));
-  if (!user)
-  {
+  const user = users.find((user) => user.name == req.body.name);
+  if (!user) {
     return res.status(400).send("This Party does not exist");
-
   }
-  try{
-    if (await bcrypt.compare(req.body.password,user.password))  //credentials are good to go
-    {
-      
-      const jwt_access_token =genaccess(user);
-      const jwt_refresh_token = jwt.sign(user,process.env.REFRESH_TOKEN_SECRET);
+  try {
+    if (await bcrypt.compare(req.body.password, user.password)) {
+      //credentials are good to go
+      const jwt_access_token = genaccess(user);
+      const jwt_refresh_token = jwt.sign(
+        user,
+        process.env.REFRESH_TOKEN_SECRET
+      );
       refreshtokenshost.push(jwt_refresh_token);
-      res.json({jwt_access_token:jwt_access_token,jwt_refresh_token:jwt_refresh_token});//might need to remove
+      res.json({
+        jwt_access_token: jwt_access_token,
+        jwt_refresh_token: jwt_refresh_token,
+      }); //might need to remove
       res.send("Success Joining Party as Host");
-    } 
-    else
-    {
+    } else {
       res.send("Invalid party host credentials");
     }
-  }
-  catch
-  {
+  } catch {
     res.status(400).send();
   }
 });
-function genaccess(user)
-{
-  return jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{expiresIn:'172800s'});
+function genaccess(user) {
+  return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+    expiresIn: "172800s",
+  });
 }
-function authtoken(req,res,next)
-{
-  const authHeader = req.headers['authorization'];
-  const token =authHeader &&  authHeader.split(' ')[1];
-  
-  if (token==null)
-  {
+function authtoken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (token == null) {
     res.sendStatus(401);
   }
-  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,user)=>{
-    if (err)
-    {
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+    if (err) {
       return res.sendStatus(403);
     }
     req.user = user;
     next();
-    
-  })
+  });
 }
+
 app.post("/refresh", (req, res) => {
   const refreshToken = req.body.refreshToken;
   const spotifyApi = new SpotifyWebApi({
