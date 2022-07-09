@@ -1,4 +1,5 @@
 import useAuth from "../Hooks/useAuth";
+import Addparty from "./Addparty";
 import { useState, useEffect } from "react";
 import { Container, Form } from "react-bootstrap";
 import SpotifyWebApi from "spotify-web-api-node";
@@ -10,6 +11,7 @@ const spotifyApi = new SpotifyWebApi({
 
 const Dashboard = (props) => {
   const accessToken = useAuth(props.code);
+  console.log(accessToken)
   const [search, setSearch] = useState("");
   const [currsong,setCurrsong] = useState();
   const [searchResults, setSearchResults] = useState([]);
@@ -66,6 +68,9 @@ const Dashboard = (props) => {
 
   return (
     <Container className="d-flex flex-column py-2" style={{ height: "100vh" }}>
+      HELLLLLLOOOOOOOOOOOOOOOOO BOSSSSSSSSSSSS
+      <Addparty accessToken= {accessToken} clientid= "7a561047270c440094df114ec0cbb949"/>
+      
       <Form.Control
         type="search"
         placeholder="Search over 70 million songs"
@@ -79,7 +84,9 @@ const Dashboard = (props) => {
           <TrackSearchResult track={track} key={track.uri}  choose = {trackchoose}/>
         ))}
       </div>
+      
       <div>
+
         <Songplay accessToken = {accessToken} trackUri = {currsong?.uri}/>
       </div>
     </Container>
