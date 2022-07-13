@@ -11,15 +11,14 @@ const spotifyApi = new SpotifyWebApi({
 
 const Dashboard = (props) => {
   const accessToken = useAuth(props.code);
-  console.log(accessToken)
+  console.log("access token is: " + accessToken);
   const [search, setSearch] = useState("");
-  const [currsong,setCurrsong] = useState();
+  const [currsong, setCurrsong] = useState();
   const [searchResults, setSearchResults] = useState([]);
   // console.log(searchResults);
-  function trackchoose(track)
-  {
+  function trackchoose(track) {
     setCurrsong(track);
-    setSearch('');
+    setSearch("");
   }
   useEffect(() => {
     if (!accessToken) {
@@ -37,30 +36,33 @@ const Dashboard = (props) => {
       return;
     }
     let cancel = false;
-    spotifyApi.searchTracks(search).then((res) => {
-      if (cancel) {
-        return;
-      }
-      setSearchResults(
-        res.body.tracks.items.map((track) => {
-          const smallAlbumImage = track.album.images.reduce(
-            (smallest, image) => {
-              if (image.height < smallest.height) return image;
-              return smallest;
-            },
-            track.album.images[0]
-          );
+    spotifyApi
+      .searchTracks(search)
+      .then((res) => {
+        if (cancel) {
+          return;
+        }
+        setSearchResults(
+          res.body.tracks.items.map((track) => {
+            const smallAlbumImage = track.album.images.reduce(
+              (smallest, image) => {
+                if (image.height < smallest.height) return image;
+                return smallest;
+              },
+              track.album.images[0]
+            );
 
-          return {
-            artist: track.artists[0].name,
-            title: track.name,
-            uri: track.uri,
-            albumImageUrl: smallAlbumImage.url,
-            duration: track.duration_ms,
-          };
-        })
-      );
-    }).catch(e=>console.log(e));
+            return {
+              artist: track.artists[0].name,
+              title: track.name,
+              uri: track.uri,
+              albumImageUrl: smallAlbumImage.url,
+              duration: track.duration_ms,
+            };
+          })
+        );
+      })
+      .catch((e) => console.log(e));
     return () => {
       cancel = true;
     };
@@ -68,9 +70,11 @@ const Dashboard = (props) => {
 
   return (
     <Container className="d-flex flex-column py-2" style={{ height: "100vh" }}>
-      HELLLLLLOOOOOOOOOOOOOOOOO BOSSSSSSSSSSSS
-      <Addparty accessToken= {accessToken} clientid= "7a561047270c440094df114ec0cbb949"/>
-      
+      Welcome to the party!
+      <Addparty
+        accessToken={accessToken}
+        clientid="7a561047270c440094df114ec0cbb949"
+      />
       <Form.Control
         type="search"
         placeholder="Search over 70 million songs"
@@ -81,13 +85,15 @@ const Dashboard = (props) => {
       />
       <div className="flex-grow-1 my-2" stye={{ overflowY: "auto" }}>
         {searchResults.map((track) => (
-          <TrackSearchResult track={track} key={track.uri}  choose = {trackchoose}/>
+          <TrackSearchResult
+            track={track}
+            key={track.uri}
+            choose={trackchoose}
+          />
         ))}
       </div>
-      
       <div>
-
-        <Songplay accessToken = {accessToken} trackUri = {currsong?.uri}/>
+        <Songplay accessToken={accessToken} trackUri={currsong?.uri} />
       </div>
     </Container>
   );

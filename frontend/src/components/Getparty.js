@@ -4,9 +4,8 @@ import { useState, useEffect } from "react";
 import SpotifyWebApi from "spotify-web-api-node";
 import { Container } from "react-bootstrap";
 
-export default function Addparty({ accessToken, clientid }) {
+export default function Getparty({ accessToken, clientid, partyCode }) {
   const [user, setuser] = useState("");
-  const [partyCode, setPartyCode] = useState("");
   const spotifyApi = new SpotifyWebApi({
     clientId: clientid,
   });
@@ -15,19 +14,19 @@ export default function Addparty({ accessToken, clientid }) {
     if (!accessToken) {
       return;
     }
-
     spotifyApi.setAccessToken(accessToken);
     spotifyApi.getMe().then(
       function (data) {
         let dataname = data.body.display_name;
         setuser(dataname);
         axios
-          .post("http://localhost:3001/createParty", {
+          .post("http://localhost:3001/getParty", {
             username: user,
+            partyCode: partyCode,
+            accessToken: accessToken,
           })
           .then((res) => {
             console.log(res.data);
-            setPartyCode(res.data.party.partyCode);
           })
           .catch((err) => {
             console.log(err);
@@ -42,6 +41,7 @@ export default function Addparty({ accessToken, clientid }) {
 
   return (
     <div>
+      <p>successfully logged in!</p>
       <p>Party Code: {partyCode}</p>
     </div>
   );
