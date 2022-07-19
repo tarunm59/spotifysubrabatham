@@ -282,18 +282,18 @@ app.delete("/userlogout", async (req, res) => {
   const userName = req.body.userName;
   let cursor = secretCol.find();
   let secrets = await cursor.toArray();
-  
+  console.log("secretscreated")
   for (let secret in secrets){
       item = secrets[secret];
       token = item['refreshToken'];
-      console.log(token)
+
       if (reftoken===token)
       {
          let deleted=await secretCol.deleteOne( { "refreshToken" : reftoken } );
          if (deleted.deletedCount === 1) {
 
           console.log("Successfully deleted one document.");
-    
+     
         } else {
     
           console.log("This doc didnt match");
@@ -313,7 +313,7 @@ app.delete("/userlogout", async (req, res) => {
   }
 
   let [exists, atIndex] = await checkCode(partyCode, parties);
-
+  console.log("her")
   if (exists) {
        let party = partyCopy[atIndex];
        let members1 = party['members'];
