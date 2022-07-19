@@ -151,7 +151,8 @@ app.post("/createParty", async (req, res) => {
       hashedUsername: hashedUsername,
     };
 
-    const tokens = genAccess(tokenUser,hostUsername);
+    const tokens = await genAccess(tokenUser,hostUsername);
+    console.log(tokens)
     const response = {
       accessToken: tokens[0],
       refreshToken: tokens[1],
@@ -188,10 +189,10 @@ app.get("/getParty", async (req, res) => {
   }
 
   let [exists, atIndex] = await checkCode(partyCode, parties);
-
+  console.log("her")
   if (exists) {
     // The party exists
-
+   
     // Generating refresh and access tokens for the user.
     const tokenUser = {
       partyCodeHashed: partyCopy[atIndex].partyCode,
@@ -202,8 +203,9 @@ app.get("/getParty", async (req, res) => {
     let exist = false;
     let reftoken = null;
     
-    for (let secret in secrets){
-      let item = secrets[secret];
+    for (let index in secrets){
+      console.log(index)
+      let item = secrets[index];
       let hashname= item['username']
       
       if( await bcrypt.compare(username, hashname)){
@@ -214,7 +216,7 @@ app.get("/getParty", async (req, res) => {
     }
     console.log(exist)
     if (exist==true){
-      let accessToken=genOnlyAccess(username);
+      let accessToken= await genOnlyAccess(username);
       const response = {
         accessToken:accessToken,
         refreshToken:reftoken,
@@ -237,7 +239,7 @@ app.get("/getParty", async (req, res) => {
     res.json(response);
     }
     else{
-      const tokens = genAccess(tokenUser,username);
+      const tokens = await genAccess(tokenUser,username);
   
       const response = {
       accessToken: tokens[0],
@@ -274,7 +276,7 @@ app.get("/getParty", async (req, res) => {
 });
 
 // The user logs out
-app.delete("/hostlogout", async (req, res) => {
+app.delete("/userlogout", async (req, res) => {
   const reftoken = req.body.token;
   const partyCode = req.body.partyCode;
   const userName = req.body.userName;
@@ -294,7 +296,7 @@ app.delete("/hostlogout", async (req, res) => {
     
         } else {
     
-          console.log("No documents matched the query. Deleted 0 documents.");
+          console.log("This doc didnt match");
     
         }
       }
@@ -365,11 +367,11 @@ app.post("/checktoken", async (req, res) => {
   if (includebool==false) {
     return res.sendStatus(403);
   }
-  jwt.verify(rtoken,refsecret, (err, user) => {
+  jwt.verify(rtoken,refsecret, async (err, user) => {
     if (err) {
       return res.sendStatus(403);
     }
-    const accessToken = genOnlyAccess(name);
+    const accessToken = await genOnlyAccess(name);
     res.json({ accessToken: accessToken });
   });
 });
@@ -386,8 +388,9 @@ const genOnlyAccess = async (user) =>
       accessTokenSecret = accessarray[person]['accessSecret'];
     }
   }
-  console.log("about to generate access token")
-  const accessToken = jwt.sign(user, accessTokenSecret, { expiresIn: '900s' });
+  console.log(accessTokenSecret);
+  
+  const accessToken = jwt.sign({user:user}, accessTokenSecret, { expiresIn: '900s' });
   return accessToken
 }
 
