@@ -10,8 +10,8 @@ const spotifyApi = new SpotifyWebApi({
 });
 
 const Dashboard = (props) => {
-  const accessToken = useAuth(props.code);
-  console.log("access token is: " + accessToken);
+  
+  console.log("access token is: " + props.accessToken);
   const [search, setSearch] = useState("");
   const [currsong, setCurrsong] = useState();
   const [searchResults, setSearchResults] = useState([]);
@@ -21,18 +21,18 @@ const Dashboard = (props) => {
     setSearch("");
   }
   useEffect(() => {
-    if (!accessToken) {
+    if (!props.accessToken) {
       return;
     }
-    spotifyApi.setAccessToken(accessToken);
-  }, [accessToken]);
+    spotifyApi.setAccessToken(props.accessToken);
+  }, [props.accessToken]);
 
   useEffect(() => {
     if (!search) {
       return setSearchResults([]);
     }
 
-    if (!accessToken) {
+    if (!props.accessToken) {
       return;
     }
     let cancel = false;
@@ -66,15 +66,12 @@ const Dashboard = (props) => {
     return () => {
       cancel = true;
     };
-  }, [search, accessToken]);
+  }, [search, props.accessToken]);
 
   return (
     <Container className="d-flex flex-column py-2" style={{ height: "100vh" }}>
       Welcome to the party!
-      <Addparty
-        accessToken={accessToken}
-        clientid="7a561047270c440094df114ec0cbb949"
-      />
+      
       <Form.Control
         type="search"
         placeholder="Search over 70 million songs"
@@ -93,7 +90,7 @@ const Dashboard = (props) => {
         ))}
       </div>
       <div>
-        <Songplay accessToken={accessToken} trackUri={currsong?.uri} />
+        <Songplay accessToken={props.accessToken} trackUri={currsong?.uri} />
       </div>
     </Container>
   );

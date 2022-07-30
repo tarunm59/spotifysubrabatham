@@ -3,8 +3,10 @@ import axios from "axios";
 import { useState, useEffect } from "react";
 import SpotifyWebApi from "spotify-web-api-node";
 import { Container } from "react-bootstrap";
-
-export default function Addparty({ accessToken, clientid }) {
+import useAuth from "../Hooks/useAuth"
+import Dashboard from './Dashboard'
+export default function Addparty({ logcode,clientid }) {
+  const accessToken = useAuth(logcode);
   const [user, setuser] = useState("");
   const [partyCode, setPartyCode] = useState("");
   const spotifyApi = new SpotifyWebApi({
@@ -43,6 +45,7 @@ export default function Addparty({ accessToken, clientid }) {
   return (
     <div>
       <p>Party Code: {partyCode}</p>
+      <Dashboard accessToken = {accessToken} code = {logcode}/>
     </div>
   );
 }

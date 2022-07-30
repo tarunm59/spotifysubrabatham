@@ -1,9 +1,10 @@
 import React from "react";
-import { Container, Row, Col, Button } from "react-bootstrap";
+import { Container, Row, Col, Button,Form } from "react-bootstrap";
 import { useState } from "react";
 
 const Landing = (code) => {
   console.log(code);
+  const [entered,setEntered] = useState('')
   return (
     <Container
       className="container-containerState  hover"
@@ -16,7 +17,19 @@ const Landing = (code) => {
       </Row>
       <br></br>
       <Row>
-        <Button variant="success">Join one!</Button>{" "}
+        <Form>
+      <Form.Group className="mb-3" controlId="formBasicPassword">
+        <Form.Label>Password</Form.Label>
+        <Form.Control type="text" placeholder="Enter Party Code" onChange={(e) => {
+          setEntered(e.target.value);
+        }}/>
+      </Form.Group>
+ 
+      <Button variant="primary" href={"/getParty/" + entered.toString()+'/'+code.code.toString()} type="submit">
+        Join the Session!
+      </Button>
+    </Form>
+        
       </Row>
       <br></br>
     </Container>

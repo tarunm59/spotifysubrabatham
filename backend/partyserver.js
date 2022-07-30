@@ -158,7 +158,7 @@ app.post("/createParty", async (req, res) => {
       refreshToken: tokens[1],
       party: infoCopy,
     };
-
+ //add access token to local(here)
     res.json(response);
   } catch {
     res.status(400).send();
@@ -175,11 +175,11 @@ app.post("/createParty", async (req, res) => {
     returns the party
 */
 app.get("/getParty", async (req, res) => {
-  let partyCode = req.body.partyCode;
-  let username = req.body.username;
-  // Hashing code and username
+  let partyCode = req.query.partyCode;
+  let username = req.query.username;
+  console.log("Started request, with the party code: " + partyCode );
   const hashedUsername = await bcrypt.hash(username, await bcrypt.genSalt());
-
+  console.log(req.headers)
   let cursor = partyCol.find();
   let parties = await cursor.toArray();
   let partyCopy = parties;
