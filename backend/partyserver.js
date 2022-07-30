@@ -177,7 +177,7 @@ app.post("/createParty", async (req, res) => {
 app.get("/getParty", async (req, res) => {
   let partyCode = req.query.partyCode;
   let username = req.query.username;
-  console.log("Started request, with the party code: " + partyCode );
+  
   const hashedUsername = await bcrypt.hash(username, await bcrypt.genSalt());
   console.log(req.headers)
   let cursor = partyCol.find();
@@ -210,9 +210,9 @@ app.get("/getParty", async (req, res) => {
       
       if( await bcrypt.compare(username, hashname)){
         exist=true;
-        reftoken = secrets['refreshToken'];
+        reftoken = item['refreshToken'];
       }
-      console.log(exist)
+     
     }
     console.log(exist)
     if (exist==true){
@@ -502,7 +502,7 @@ app.listen(3001);
 const codeGen = (length) => {
   var result = "";
   var characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*-+?";
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$^&*";
   var charactersLength = characters.length;
   for (var i = 0; i < length; i++) {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));

@@ -32,6 +32,8 @@ export  default  function Getparty({ logcode, clientid, partyCode }) {
           .get("http://localhost:3001/getParty",{ params: { partyCode: partyCode,username:user } })
           .then((res) => {
             console.log(res.data);
+            sessionStorage.setItem('CurrentToken', res.data.accessToken);
+            sessionStorage.setItem('CurrentRefreshToken', res.data.refreshToken);
             setRes(JSON.stringify(res.data.party.members))
             setSongs(JSON.stringify(res.data.party.songs))
           })

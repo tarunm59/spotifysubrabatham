@@ -28,7 +28,8 @@ export default function Addparty({ logcode,clientid }) {
             username: user,
           })
           .then((res) => {
-            console.log(res.data);
+            sessionStorage.setItem('CurrentToken', res.data.accessToken);
+            sessionStorage.setItem('CurrentRefreshToken', res.data.refreshToken);
             setPartyCode(res.data.party.partyCode);
           })
           .catch((err) => {
