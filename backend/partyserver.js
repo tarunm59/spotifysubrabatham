@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -42,15 +43,7 @@ let refreshtokenshost = [];
 // TOKEN MANAGEMENT
 //**************************************************************************************** */
 
-const authenticateSpotifyUser = async (req, res, next) => {
-  const spotifyAccToken = req.body.accessToken;
 
-  if (spotifyAccToken === spotifyAccessToken) {
-    next();
-  } else {
-    res.sendStatus(401);
-  }
-};
 
 // Authenticates the auth token
 const authenticateToken = async (req, res, next) => {
@@ -97,6 +90,34 @@ const authenticateToken = async (req, res, next) => {
     Creates a party authorisation token for the user
     Returns the access token, refresh token and the party
 */
+app.post("/authenticateJWT", async (req, res) => {
+  var token = req.body.token
+  var user = req.body.user
+  let secretCursor = secretCol.find();
+  let accessarray = await secretCursor.toArray();
+  let accessTokenSecret ;
+  for (let person in accessarray)
+
+  {
+    if(await bcrypt.compare(user,accessarray[person]['username'])){
+      accessTokenSecret = accessarray[person]['accessSecret'];
+    }
+  }
+  
+  jwt.verify(token, accessTokenSecret, function(err, decoded) {
+    if (!err) {
+    return res.json({result:true})
+    } else {
+     
+    return res.json({result:false})
+    }
+  });
+  
+  
+  
+ 
+  
+});
 app.post("/createParty", async (req, res) => {
   try {
     // Getting username and partyCode
@@ -117,7 +138,7 @@ app.post("/createParty", async (req, res) => {
       await bcrypt.genSalt()
     );
     const hashedCode = await bcrypt.hash(partyCode, await bcrypt.genSalt());
-
+    
     // Creating the party
     const newPartyInfo = {
       partyCode: hashedCode,
@@ -150,16 +171,44 @@ app.post("/createParty", async (req, res) => {
       partyCodeHashed: hashedCode,
       hashedUsername: hashedUsername,
     };
-
-    const tokens = await genAccess(tokenUser,hostUsername);
-    console.log(tokens)
+    let seccursor =  secretCol.find();
+    let secrets = await seccursor.toArray();
+    let exist = false;
+    let reftoken = null;
+    
+    for (let index in secrets){
+     
+      let item = secrets[index];
+      let hashname= item['username']
+      
+      if( await bcrypt.compare(hostUsername, hashname)){
+        exist=true;
+        reftoken = item['refreshToken'];
+      }
+     
+    }
+    if (exist==false){
+      const tokens = await genAccess(tokenUser,hostUsername);
+      console.log(tokens)
+      const response = {
+        accessToken: tokens[0],
+        refreshToken: tokens[1],
+        party: infoCopy,
+      };
+   //add access token to local(here)
+      return res.json(response);
+    }
+    else{
+      const tokens = await genOnlyAccess(hostUsername);
+    
     const response = {
-      accessToken: tokens[0],
-      refreshToken: tokens[1],
+      accessToken: tokens,
+      refreshToken: reftoken,
       party: infoCopy,
     };
  //add access token to local(here)
-    res.json(response);
+    return res.json(response);
+    }
   } catch {
     res.status(400).send();
   }
@@ -356,17 +405,24 @@ app.post("/checktoken", async (req, res) => {
   let secrets = await cursor.toArray();
   let includebool= false;
   let refsecret = '';
+  
+  
   for (let secret in secrets){
-      item = secrets[secret];
-      token = item['refreshToken'];
-      if (token==rtoken){
+      let item = secrets[secret];
+      let token = item['refreshToken'];
+      
+      
+      if (token===rtoken){
          includebool=true;
+         
          refsecret=item['refreshSecret'];
       }
     }
+
   if (includebool==false) {
     return res.sendStatus(403);
   }
+  console.log(refsecret)
   jwt.verify(rtoken,refsecret, async (err, user) => {
     if (err) {
       return res.sendStatus(403);
@@ -390,7 +446,7 @@ const genOnlyAccess = async (user) =>
   }
   console.log(accessTokenSecret);
   
-  const accessToken = jwt.sign({user:user}, accessTokenSecret, { expiresIn: '900s' });
+  const accessToken = jwt.sign({user:user}, accessTokenSecret, { expiresIn: '180s' });
   return accessToken
 }
 
@@ -403,9 +459,9 @@ const genAccess = async (user,name) => {
   
   
   const accessToken = jwt.sign(user, accessTokenSecret, {
-    expiresIn: "1800s",
+    expiresIn: "180s",
   });
-  const refreshToken = jwt.sign(user, refreshTokenSecret,{expiresIn:'172800s'});
+  const refreshToken = jwt.sign(user, refreshTokenSecret,{expiresIn:'5760s'});
   const accessSecretData = {
     partyCode: user.partyCodeHashed,
     username: user.hashedUsername,
@@ -502,7 +558,7 @@ app.listen(3001);
 const codeGen = (length) => {
   var result = "";
   var characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$^&*";
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@$^&*";
   var charactersLength = characters.length;
   for (var i = 0; i < length; i++) {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));

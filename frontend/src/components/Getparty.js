@@ -48,7 +48,45 @@ export  default  function Getparty({ logcode, clientid, partyCode }) {
       }
     );
   }, [accessToken]);
-
+  useEffect(() => {
+    
+    const timeout = setInterval(() => {
+      console.log("Set interval checking whether token is valid")
+      let sessionToken  = sessionStorage.getItem('CurrentToken');
+      
+      axios
+        .post("http://localhost:3001/authenticateJWT", {
+          token:sessionToken,
+          user:user
+        })
+        .then((res) => {
+          
+          if (res.data.result===false){
+            console.log("Entered else block")
+            axios
+            .post("http://localhost:3001/checktoken", {
+              token: sessionStorage.getItem('CurrentRefreshToken'),
+              username:user
+            })
+            .then((res) => {
+              console.log(res);
+              sessionStorage.setItem('CurrentToken', res.data.accessToken);
+            })
+            .catch((err) => {
+              console.log(err);
+             
+            })
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+      
+      
+      
+    }, 1000 *5);
+    return () => clearInterval(timeout);
+  }, []);
   return (
     <div>
       <p>Party Code: {partyCode}</p>

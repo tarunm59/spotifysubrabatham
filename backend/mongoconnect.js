@@ -35,11 +35,4 @@ connection();
 client
   .db("Partydb")
   .collection("test")
-  .insertOne(dataInserted, function (err, result) {
-    if (err != null) {
-      console.log(err);
-      return;
-    }
-    console.log("Data inserted into mongo! success.");
-    console.log(result); // toString()
-  });
+  .deleteMany();
