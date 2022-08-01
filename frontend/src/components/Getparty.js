@@ -3,7 +3,7 @@ import axios from "axios";
 import { useState, useEffect } from "react";
 
 import SpotifyWebApi from "spotify-web-api-node";
-import { Container } from "react-bootstrap";
+import { Container ,Row,Col,Button} from "react-bootstrap";
 import useAuth from "../Hooks/useAuth"
 import Dashboard from './Dashboard'
 export  default  function Getparty({ logcode, clientid, partyCode }) {
@@ -12,6 +12,20 @@ export  default  function Getparty({ logcode, clientid, partyCode }) {
   const [res2,setRes] = useState();
   const [host,setHost] = useState('')
   const [songs,setSongs] = useState()
+  const handleClick = async () => {
+    
+    try {
+      const {data} = await axios.delete(
+        'http://localhost:3001/userlogout',
+        {data:{token: sessionStorage.getItem('CurrentRefreshToken'),partyCode:partyCode,userName: user}}
+        
+      );
+
+      
+    } catch (err) {
+     console.log(err)
+    } 
+  };
   console.log(partyCode)
   const spotifyApi = new SpotifyWebApi({
     clientId: clientid,
@@ -89,7 +103,7 @@ export  default  function Getparty({ logcode, clientid, partyCode }) {
   }, []);
   return (
     <div>
-      <p>Party Code: {partyCode}</p>
+       <Col> <p>Party Code: {partyCode}</p></Col><Col></Col><Col></Col><Col><Button onClick={handleClick} variant="primary">Logout</Button>{' '}</Col>
       <p> Hello {user}</p>
       <p>The members are</p>
       <p>{res2}</p><br></br>

@@ -351,7 +351,7 @@ app.delete("/userlogout", async (req, res) => {
       }
     }
     
-  
+  console.log("Secret Removed")
   //replacing the mongo parties accordingly and send back to landing page
   let partycursor = partyCol.find();
   let parties = await partycursor.toArray();
@@ -390,8 +390,10 @@ app.delete("/userlogout", async (req, res) => {
   else{
     res.sendStatus(403);
   }
-  res.sendStatus(200);
+  console.log("All Done")
   res.redirect('/');
+  
+  
 });
 
 // Endpoint to refresh the acces token using refresh token
