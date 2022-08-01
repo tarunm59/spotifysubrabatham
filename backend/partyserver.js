@@ -10,7 +10,7 @@ const app = express();
 const assert = require("assert");
 const { MongoClient } = require("mongodb");
 const crypto = require("crypto");
-const { response } = require("express");
+// const { response } = require("express");
 
 let spotifyAccessToken = null;
 
@@ -60,13 +60,13 @@ const authenticateToken = async (req, res, next) => {
   if (token == null) {
     res.sendStatus(401);
   }
-
   let cursor = secretCol.find();
   let tokens = await cursor.toArray();
+  // console.log("tokens are: ", tokens);
   let [isPresent, tokenPointer] = await checkForUsername(username, tokens);
 
   if (!isPresent) {
-    // token is present
+    // user not logged in.
     res.sendStatus(401);
     console.log("Username not found.");
     return;
@@ -151,8 +151,8 @@ app.post("/createParty", async (req, res) => {
       hashedUsername: hashedUsername,
     };
 
-    const tokens = await genAccess(tokenUser,hostUsername);
-    console.log(tokens)
+    const tokens = await genAccess(tokenUser, hostUsername);
+    console.log(tokens);
     const response = {
       accessToken: tokens[0],
       refreshToken: tokens[1],
@@ -189,85 +189,83 @@ app.get("/getParty", async (req, res) => {
   }
 
   let [exists, atIndex] = await checkCode(partyCode, parties);
-  console.log("her")
   if (exists) {
     // The party exists
-   
+
     // Generating refresh and access tokens for the user.
     const tokenUser = {
       partyCodeHashed: partyCopy[atIndex].partyCode,
       hashedUsername: hashedUsername,
     };
-    let cursor =  secretCol.find();
+    let cursor = secretCol.find();
     let secrets = await cursor.toArray();
     let exist = false;
     let reftoken = null;
-    
-    for (let index in secrets){
-      console.log(index)
+
+    for (let index in secrets) {
+      console.log(index);
       let item = secrets[index];
-      let hashname= item['username']
-      
-      if( await bcrypt.compare(username, hashname)){
-        exist=true;
-        reftoken = secrets['refreshToken'];
+      let hashname = item["username"];
+
+      if (await bcrypt.compare(username, hashname)) {
+        exist = true;
+        reftoken = secrets["refreshToken"];
       }
-      console.log(exist)
+      console.log(exist);
     }
-    console.log(exist)
-    if (exist==true){
-      let accessToken= await genOnlyAccess(username);
+    console.log(exist);
+    if (exist == true) {
+      let accessToken = await genOnlyAccess(username);
       const response = {
-        accessToken:accessToken,
-        refreshToken:reftoken,
-        party: partyCopy[atIndex]
-      }
-      let membersArr = partyCopy[atIndex].members;
-    
-    // Updating the members array in mongo.
-    let unameArray = membersArr;
-    unameArray.push(hashedUsername);
-    const updatedArray = {
-      members: unameArray,
-    };
-    partyCol.updateOne(
-      { partyCode: partyCopy[atIndex].partyCode },
-      { $set: updatedArray }
-    );
-    console.log("Added the user to mongo array for the party.");
-    // Sending the response to the user.
-    res.json(response);
-    }
-    else{
-      const tokens = await genAccess(tokenUser,username);
-  
-      const response = {
-      accessToken: tokens[0],
-      refreshToken: tokens[1],
-      party: partyCopy[atIndex],
+        accessToken: accessToken,
+        refreshToken: reftoken,
+        party: partyCopy[atIndex],
       };
-      
       let membersArr = partyCopy[atIndex].members;
-      console.log(membersArr)
-      
+      let newActiveMembers = (await partyCopy[atIndex].numberActive) + 1;
+      // Updating the members array in mongo.
+      let unameArray = membersArr;
+      unameArray.push(hashedUsername);
+      const updatedArray = {
+        members: unameArray,
+      };
+      partyCol.updateOne(
+        { partyCode: partyCopy[atIndex].partyCode },
+        { $set: updatedArray }
+      );
+      partyCol.updateOne(
+        { partyCode: parties[index].partyCode },
+        { $set: { numberActive: newActiveMembers } }
+      );
+      console.log("Added the user to mongo array for the party.");
+      // Sending the response to the user.
+      res.json(response);
+    } else {
+      const tokens = await genAccess(tokenUser, username);
 
-    // Updating the members array in mongo.
-    let unameArray = membersArr;
-    unameArray.push(hashedUsername);
-    const updatedArray = {
-      members: unameArray,
-    };
-    partyCol.updateOne(
-      { partyCode: partyCopy[atIndex].partyCode },
-      { $set: updatedArray }
-    );
-    console.log("Added the user to mongo array for the party.");
-    // Sending the response to the user.
-    res.json(response);
+      const response = {
+        accessToken: tokens[0],
+        refreshToken: tokens[1],
+        party: partyCopy[atIndex],
+      };
+
+      let membersArr = partyCopy[atIndex].members;
+      console.log(membersArr);
+
+      // Updating the members array in mongo.
+      let unameArray = membersArr;
+      unameArray.push(hashedUsername);
+      const updatedArray = {
+        members: unameArray,
+      };
+      partyCol.updateOne(
+        { partyCode: partyCopy[atIndex].partyCode },
+        { $set: updatedArray }
+      );
+      console.log("Added the user to mongo array for the party.");
+      // Sending the response to the user.
+      res.json(response);
     }
-    
-
-    
   } else {
     let errorFinding = "Party Not Found!";
     console.log(errorFinding);
@@ -282,27 +280,21 @@ app.delete("/userlogout", async (req, res) => {
   const userName = req.body.userName;
   let cursor = secretCol.find();
   let secrets = await cursor.toArray();
-  console.log("secretscreated")
-  for (let secret in secrets){
-      item = secrets[secret];
-      token = item['refreshToken'];
+  console.log("secretscreated");
+  for (let secret in secrets) {
+    item = secrets[secret];
+    token = item["refreshToken"];
 
-      if (reftoken===token)
-      {
-         let deleted=await secretCol.deleteOne( { "refreshToken" : reftoken } );
-         if (deleted.deletedCount === 1) {
-
-          console.log("Successfully deleted one document.");
-     
-        } else {
-    
-          console.log("This doc didnt match");
-    
-        }
+    if (reftoken === token) {
+      let deleted = await secretCol.deleteOne({ refreshToken: reftoken });
+      if (deleted.deletedCount === 1) {
+        console.log("Successfully deleted one document.");
+      } else {
+        console.log("This doc didnt match");
       }
     }
-    
-  
+  }
+
   //replacing the mongo parties accordingly and send back to landing page
   let partycursor = partyCol.find();
   let parties = await partycursor.toArray();
@@ -313,36 +305,38 @@ app.delete("/userlogout", async (req, res) => {
   }
 
   let [exists, atIndex] = await checkCode(partyCode, parties);
-  console.log("her")
+  console.log("her");
   if (exists) {
-       let party = partyCopy[atIndex];
-       let members1 = party['members'];
-       let membersupdated = [];
-       for (let member in members1){
-        if(await bcrypt.compare(userName,members1[member])){
-          
-        }
-        else{
-          membersupdated.push(members1[member]);
-        }
-       }
-    const filter = { partyCode: partyCopy[atIndex]['partyCode'] };
+    let party = partyCopy[atIndex];
+    let newActiveMembers = (await partyCopy[atIndex].numberActive) - 1;
+    let members1 = party["members"];
+    let membersupdated = [];
+    for (let member in members1) {
+      if (await bcrypt.compare(userName, members1[member])) {
+      } else {
+        membersupdated.push(members1[member]);
+      }
+    }
+    const filter = { partyCode: partyCopy[atIndex]["partyCode"] };
     const options = { upsert: true };
     const updateDoc = {
       $set: {
-        members: membersupdated
+        members: membersupdated,
       },
     };
+    partyCol.updateOne(
+      { partyCode: parties[index].partyCode },
+      { $set: { numberActive: newActiveMembers } }
+    );
     const result = await partyCol.updateOne(filter, updateDoc, options);
     console.log(
-      `${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`,
+      `${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`
     );
-  }
-  else{
+  } else {
     res.sendStatus(403);
   }
   res.sendStatus(200);
-  res.redirect('/');
+  res.redirect("/");
 });
 
 // Endpoint to refresh the acces token using refresh token
@@ -354,20 +348,20 @@ app.post("/checktoken", async (req, res) => {
   }
   let cursor = secretCol.find();
   let secrets = await cursor.toArray();
-  let includebool= false;
-  let refsecret = '';
-  for (let secret in secrets){
-      item = secrets[secret];
-      token = item['refreshToken'];
-      if (token==rtoken){
-         includebool=true;
-         refsecret=item['refreshSecret'];
-      }
+  let includebool = false;
+  let refsecret = "";
+  for (let secret in secrets) {
+    item = secrets[secret];
+    token = item["refreshToken"];
+    if (token == rtoken) {
+      includebool = true;
+      refsecret = item["refreshSecret"];
     }
-  if (includebool==false) {
+  }
+  if (includebool == false) {
     return res.sendStatus(403);
   }
-  jwt.verify(rtoken,refsecret, async (err, user) => {
+  jwt.verify(rtoken, refsecret, async (err, user) => {
     if (err) {
       return res.sendStatus(403);
     }
@@ -376,59 +370,54 @@ app.post("/checktoken", async (req, res) => {
   });
 });
 
-const genOnlyAccess = async (user) =>
-{
+const genOnlyAccess = async (user) => {
   let secretCursor = secretCol.find();
   let accessarray = await secretCursor.toArray();
   let accessTokenSecret = crypto.randomBytes(64).toString("hex");
-  for (let person in accessarray)
-
-  {
-    if(await bcrypt.compare(user,accessarray[person]['username'])){
-      accessTokenSecret = accessarray[person]['accessSecret'];
+  for (let person in accessarray) {
+    if (await bcrypt.compare(user, accessarray[person]["username"])) {
+      accessTokenSecret = accessarray[person]["accessSecret"];
     }
   }
   console.log(accessTokenSecret);
-  
-  const accessToken = jwt.sign({user:user}, accessTokenSecret, { expiresIn: '900s' });
-  return accessToken
-}
+
+  const accessToken = jwt.sign({ user: user }, accessTokenSecret, {
+    expiresIn: "900s",
+  });
+  return accessToken;
+};
 
 // Creates an auth token and auth token secret for the user.
-const genAccess = async (user,name) => {
+const genAccess = async (user, name) => {
   // Generating access and refresh token secrets
   const accessTokenSecret = crypto.randomBytes(64).toString("hex");
   const refreshTokenSecret = crypto.randomBytes(64).toString("hex");
 
-  
-  
   const accessToken = jwt.sign(user, accessTokenSecret, {
     expiresIn: "1800s",
   });
-  const refreshToken = jwt.sign(user, refreshTokenSecret,{expiresIn:'172800s'});
+  const refreshToken = jwt.sign(user, refreshTokenSecret, {
+    expiresIn: "172800s",
+  });
   const accessSecretData = {
     partyCode: user.partyCodeHashed,
     username: user.hashedUsername,
     accessSecret: accessTokenSecret,
     refreshSecret: refreshTokenSecret,
-    refreshToken:refreshToken
+    refreshToken: refreshToken,
   };
   let cursor = secretCol.find();
   let secrets = await cursor.toArray();
 
   exist = false;
-  for (let secret in secrets)
-  {
+  for (let secret in secrets) {
     item = secrets[secret];
-    if( await bcrypt.compare(name, item['username']))
-    {
-        exist=true;
+    if (await bcrypt.compare(name, item["username"])) {
+      exist = true;
     }
   }
 
-  
-  if(exist==false)
-  {
+  if (exist == false) {
     secretCol.insertOne(accessSecretData, (err, result) => {
       if (err == null) {
         console.log("Token information written");
@@ -437,10 +426,103 @@ const genAccess = async (user,name) => {
         console.log(err);
       }
     });
-  
   }
   return [accessToken, refreshToken];
 };
+
+//**************************************************************************************** */
+// SONG MANAGEMENT
+//**************************************************************************************** */
+
+app.post("/addSong", authenticateToken, async (req, res) => {
+  const partyCode = req.body.partyCode;
+  const song = req.body.song;
+  let cursor = partyCol.find();
+  const parties = await cursor.toArray();
+  // console.log(partyCode);
+  let [present, index] = await checkCode(partyCode, parties);
+  if (!present) {
+    res.sendStatus(400);
+    return;
+  }
+  let currParty = parties[index];
+  let songs = currParty.songs;
+  songs.push(song);
+
+  partyCol.updateOne(
+    { partyCode: parties[index].partyCode },
+    { $set: { songs: songs } }
+  );
+  res.json({ songs: songs });
+});
+
+app.delete("/removeSong", authenticateToken, async (req, res) => {
+  const partyCode = req.body.partyCode;
+  const song = req.body.song;
+  let cursor = partyCol.find();
+  let parties = await cursor.toArray();
+
+  let [songPresent, currParty, songIdx, index] = await songIsPresent(
+    partyCode,
+    parties,
+    song
+  );
+
+  if (!songPresent) {
+    res.sendStatus(400);
+    return;
+  }
+
+  let songs = currParty.songs;
+  let songCopy = [];
+  for (let i = 0; i < songs.length; i++) {
+    if (i != songIdx) {
+      songCopy.push(songs[i]);
+    }
+  }
+
+  partyCol.updateOne(
+    { partyCode: parties[index].partyCode },
+    { $set: { songs: songCopy } }
+  );
+  res.json({ songs: songCopy });
+});
+
+app.post("/updateSongList", authenticateToken, async (req, res) => {
+  const partyCode = req.body.partyCode;
+  const song = req.body.song;
+  const position = req.body.position - 1;
+  let cursor = partyCol.find();
+  let parties = await cursor.toArray();
+
+  let [songPresent, currParty, songIdx, index] = await songIsPresent(
+    partyCode,
+    parties,
+    song
+  );
+  if (!songPresent) {
+    res.sendStatus(400);
+    return;
+  }
+
+  let songs = currParty.songs;
+  let songCopy = [];
+  for (let i = 0; i < songs.length; i++) {
+    if (i == position) {
+      songCopy.push(song);
+    }
+    if (i == songIdx) {
+    } else {
+      songCopy.push(songs[i]);
+    }
+  }
+
+  partyCol.updateOne(
+    { partyCode: parties[index].partyCode },
+    { $set: { songs: songCopy } }
+  );
+  res.json({ songs: songCopy });
+});
 
 //**************************************************************************************** */
 // SPOTIFY WEB API LOGIN AND REFRESH
@@ -523,10 +605,25 @@ const checkCode = async (partyCode, partiesArr) => {
 const checkForUsername = async (username, usersArray) => {
   for (let i = 0; i < usersArray.length; i++) {
     const userObject = usersArray[i];
-    console.log(userObject)
-    if (await bcrypt.compare(username, userObject)) {
+    console.log(userObject);
+    if (await bcrypt.compare(username, userObject.username)) {
       return [true, i];
     }
   }
   return [false, 0];
+};
+
+const songIsPresent = async (partyCode, partiesArr, song) => {
+  [present, index] = await checkCode(partyCode, partiesArr);
+  if (!present) {
+    return [false, null, -1, -1];
+  }
+  let currParty = partiesArr[index];
+  const songsArr = currParty.songs;
+  for (let i = 0; i < songsArr.length; i++) {
+    if (songsArr[i] == song) {
+      return [true, currParty, i, index];
+    }
+  }
+  return [false, currParty, -1, -1];
 };
