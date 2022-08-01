@@ -391,7 +391,7 @@ app.delete("/userlogout", async (req, res) => {
     res.sendStatus(403);
   }
   console.log("All Done")
-  res.redirect('/');
+  res.sendStatus(200);
   
   
 });

@@ -17,17 +17,25 @@ export default function Addparty({ logcode,clientid }) {
   });
   const handleClick = async () => {
     
-    try {
-      const {data} = await axios.delete(
+    
+      axios.delete(
         'http://localhost:3001/userlogout',
         {data:{token: sessionStorage.getItem('CurrentRefreshToken'),partyCode:partyCode,userName: user}}
         
-      );
+      ).then((res) => {
+        console.log(res)
+        if (res.status === 200) {
+             sessionStorage.clear();
+             sessionStorage.clear();
+              window.location = '/'
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+      });;
 
       
-    } catch (err) {
-     console.log(err)
-    } 
+    
   };
   useEffect(() => {
     if (!accessToken) {

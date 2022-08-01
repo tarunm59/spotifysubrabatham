@@ -14,17 +14,21 @@ export  default  function Getparty({ logcode, clientid, partyCode }) {
   const [songs,setSongs] = useState()
   const handleClick = async () => {
     
-    try {
-      const {data} = await axios.delete(
-        'http://localhost:3001/userlogout',
-        {data:{token: sessionStorage.getItem('CurrentRefreshToken'),partyCode:partyCode,userName: user}}
-        
-      );
-
+    axios.delete(
+      'http://localhost:3001/userlogout',
+      {data:{token: sessionStorage.getItem('CurrentRefreshToken'),partyCode:partyCode,userName: user}}
       
-    } catch (err) {
-     console.log(err)
-    } 
+    ).then((res) => {
+      console.log(res)
+      if (res.status === 200) {
+        sessionStorage.clear()
+        sessionStorage.clear()
+            window.location = '/'
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+    });;
   };
   console.log(partyCode)
   const spotifyApi = new SpotifyWebApi({
