@@ -3,7 +3,7 @@ import axios from "axios";
 import { useState, useEffect } from "react";
 
 import SpotifyWebApi from "spotify-web-api-node";
-import { Col, Button } from "react-bootstrap";
+import { Col, Button,Row } from "react-bootstrap";
 import useAuth from "../Hooks/useAuth";
 import Dashboard from "./Dashboard";
 export default function Getparty({ logcode, clientid, partyCode }) {
@@ -51,7 +51,7 @@ export default function Getparty({ logcode, clientid, partyCode }) {
         setuser(dataname);
         axios
           .get("http://localhost:3001/getParty", {
-            params: { partyCode: partyCode, username: user },
+            params: { partyCode: partyCode, username: dataname },
           })
           .then((res) => {
             // console.log(res.data);
@@ -60,12 +60,12 @@ export default function Getparty({ logcode, clientid, partyCode }) {
               "CurrentRefreshToken",
               res.data.refreshToken
             );
-            setRes(JSON.stringify(res.data.party.members));
+            setRes(res.data.party.members);
             setSongs(JSON.stringify(res.data.party.songs));
           })
           .catch((err) => {
             console.log(err);
-            setRes(JSON.stringify(err));
+            setRes(err);
           });
       },
       function (err) {
@@ -75,6 +75,9 @@ export default function Getparty({ logcode, clientid, partyCode }) {
     );
   }, [accessToken]);
   useEffect(() => {
+    if (!user) {
+      return;
+    }
     const timeout = setInterval(() => {
       // console.log("Set interval checking whether token is valid");
       let sessionToken = sessionStorage.getItem("CurrentToken");
@@ -105,31 +108,68 @@ export default function Getparty({ logcode, clientid, partyCode }) {
         });
     }, 1000 * 5);
     return () => clearInterval(timeout);
-  }, []);
+  }, [user]);
   return (
+    
     <div>
-      <Col>
-        {" "}
-        <p>Party Code: {partyCode}</p>
-      </Col>
-      <Col></Col>
-      <Col></Col>
-      <Col>
-        <Button onClick={handleClick} variant="primary">
-          Logout
-        </Button>{" "}
-      </Col>
-      <p> Hello {user}</p>
-      <p>The members are</p>
-      <p>{res2}</p>
-      <br></br>
-      <p>The songs are</p>
-      <p>{songs}</p>
-      <Dashboard
+      
+      
+      <Row style={{ maxWidth: "100%" }}>
+        
+        
+        <Col >
+        </Col>
+        <Col className="d-flex justify-content-left">
+          {" "}
+          <p>Party Code: {partyCode}</p>
+        </Col>
+        
+        <Col></Col>
+        <Col className="d-flex justify-content-center">
+          <Button
+            style={{ marginTop: "10px" }}
+            onClick={handleClick}
+            variant="primary"
+          >
+            Logout
+          </Button>{" "}
+        </Col>
+        <Row>
+          <Col></Col>
+        <Col>
+         
+          </Col>
+          <Col ></Col>
+          <Col className="d-flex justify-content-left">
+          {" "}
+          <p> Hello {user}</p></Col><Col></Col>
+        </Row>
+      </Row>
+    
+      <Row>
+        <Col>
+         Members
+        <br></br>
+       <br></br>
+        {res2}
+        </Col>
+        
+        
+        <Col xs={8} md = {8} lg = {11}><Dashboard
         accessToken={accessToken}
         code={logcode}
         partyCode={partyCode}
-      />
+      /></Col>
+        
+      </Row>
+        
+      
+      
+      
+       
+        
+      
+      
     </div>
   );
 }

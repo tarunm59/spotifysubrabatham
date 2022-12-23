@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -11,6 +12,7 @@ const assert = require("assert");
 const { MongoClient } = require("mongodb");
 const crypto = require("crypto");
 const { response } = require("express");
+const { io } = require("socket.io-client");
 
 let spotifyAccessToken = null;
 
@@ -34,14 +36,17 @@ connection();
 const partyCol = client.db("Partydb").collection("test");
 const secretCol = client.db("Partydb").collection("testSecret");
 
-const users = []; //basically a database to be created
-// app.use(bodyParser.urlencoded({ extended: true }));
-let refreshtokenshost = [];
+
+
+
 
 //**************************************************************************************** */
 // TOKEN MANAGEMENT
 //**************************************************************************************** */
 
+
+
+// Authenticates the auth token
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -49,19 +54,20 @@ const authenticateToken = async (req, res, next) => {
   if (token == null) {
     res.sendStatus(401);
   }
+
   let cursor = secretCol.find();
   let tokens = await cursor.toArray();
   let [isPresent, tokenPointer] = await checkForUsername(username, tokens);
 
   if (!isPresent) {
-    // user not logged in.
+    // token is present
     res.sendStatus(401);
     console.log("Username not found.");
     return;
   }
 
   let secretObject = tokens[tokenPointer];
-
+  console.log(secretObject.accessSecret);
   jwt.verify(token, secretObject.accessSecret, (err, user) => {
     if (err) {
       return res.sendStatus(403);
@@ -86,24 +92,32 @@ const authenticateToken = async (req, res, next) => {
     Returns the access token, refresh token and the party
 */
 app.post("/authenticateJWT", async (req, res) => {
-  var token = req.body.token;
-  var user = req.body.user;
+  var token = req.body.token
+  var user = req.body.user
   let secretCursor = secretCol.find();
   let accessarray = await secretCursor.toArray();
-  let accessTokenSecret;
-  for (let person in accessarray) {
-    if (await bcrypt.compare(user, accessarray[person]["username"])) {
-      accessTokenSecret = accessarray[person]["accessSecret"];
+  let accessTokenSecret ;
+  for (let person in accessarray)
+
+  {
+    if(user===accessarray[person]['username']){
+      accessTokenSecret = accessarray[person]['accessSecret'];
     }
   }
-
-  jwt.verify(token, accessTokenSecret, function (err, decoded) {
+  
+  jwt.verify(token, accessTokenSecret, function(err, decoded) {
     if (!err) {
-      return res.json({ result: true });
+    return res.json({result:true})
     } else {
-      return res.json({ result: false });
+     
+    return res.json({result:false})
     }
   });
+  
+  
+  
+ 
+  
 });
 app.post("/createParty", async (req, res) => {
   try {
@@ -120,18 +134,15 @@ app.post("/createParty", async (req, res) => {
     }
 
     // Hashing code and username
-    const hashedUsername = await bcrypt.hash(
-      hostUsername,
-      await bcrypt.genSalt()
-    );
+    
     const hashedCode = await bcrypt.hash(partyCode, await bcrypt.genSalt());
-
+    
     // Creating the party
     const newPartyInfo = {
       partyCode: hashedCode,
       partyTime: new Date(),
-      hostUsername: hashedUsername,
-      members: [hashedUsername],
+      hostUsername: hostUsername,
+      members: [hostUsername],
       songs: [],
       currentSong: "",
       numberActive: 1,
@@ -139,8 +150,8 @@ app.post("/createParty", async (req, res) => {
     const infoCopy = {
       partyCode: partyCode,
       partyTime: new Date(),
-      hostUsername: hashedUsername,
-      members: [hashedUsername],
+      hostUsername: hostUsername,
+      members: [hostUsername],
       songs: [],
       currentSong: "",
       numberActive: 1,
@@ -150,46 +161,51 @@ app.post("/createParty", async (req, res) => {
     partyCol.insertOne(newPartyInfo, (err, result) => {
       assert.equal(err, null);
       console.log("Party added to MongoDB"); //REMOVE
+      console.log(result); //REMOVE
     });
 
     // Generate authtoken and refresh token for the user.
     const tokenUser = {
       partyCodeHashed: hashedCode,
-      hashedUsername: hashedUsername,
+      hashedUsername: hostUsername,
     };
-    let seccursor = secretCol.find();
+    let seccursor =  secretCol.find();
     let secrets = await seccursor.toArray();
     let exist = false;
     let reftoken = null;
-
-    for (let index in secrets) {
+    
+    for (let index in secrets){
+     
       let item = secrets[index];
-      let hashname = item["username"];
-
-      if (await bcrypt.compare(hostUsername, hashname)) {
-        exist = true;
-        reftoken = item["refreshToken"];
+      let name= item['username']
+      
+      if( hostUsername===name){
+        exist=true;
+        reftoken = item['refreshToken'];
       }
+     
     }
-    if (exist == false) {
-      const tokens = await genAccess(tokenUser, hostUsername);
+    if (exist==false){
+      const tokens = await genAccess(tokenUser,hostUsername);
+      console.log(tokens)
       const response = {
         accessToken: tokens[0],
         refreshToken: tokens[1],
         party: infoCopy,
       };
-      //add access token to local(here)
+   //add access token to local(here)
       return res.json(response);
-    } else {
+    }
+    else{
       const tokens = await genOnlyAccess(hostUsername);
-
-      const response = {
-        accessToken: tokens,
-        refreshToken: reftoken,
-        party: infoCopy,
-      };
-      //add access token to local(here)
-      return res.json(response);
+    
+    const response = {
+      accessToken: tokens,
+      refreshToken: reftoken,
+      party: infoCopy,
+    };
+ //add access token to local(here)
+    return res.json(response);
     }
   } catch {
     res.status(400).send();
@@ -208,9 +224,9 @@ app.post("/createParty", async (req, res) => {
 app.get("/getParty", async (req, res) => {
   let partyCode = req.query.partyCode;
   let username = req.query.username;
-
-  const hashedUsername = await bcrypt.hash(username, await bcrypt.genSalt());
-
+  
+  
+  console.log(req.headers)
   let cursor = partyCol.find();
   let parties = await cursor.toArray();
   let partyCopy = parties;
@@ -220,76 +236,101 @@ app.get("/getParty", async (req, res) => {
   }
 
   let [exists, atIndex] = await checkCode(partyCode, parties);
-
+  console.log("her")
   if (exists) {
     // The party exists
-
+   
     // Generating refresh and access tokens for the user.
     const tokenUser = {
       partyCodeHashed: partyCopy[atIndex].partyCode,
-      hashedUsername: hashedUsername,
+      hashedUsername: username,
     };
-    let cursor = secretCol.find();
+    let cursor =  secretCol.find();
     let secrets = await cursor.toArray();
     let exist = false;
     let reftoken = null;
-
-    for (let index in secrets) {
+    
+    for (let index in secrets){
+      console.log(index)
       let item = secrets[index];
-      let hashname = item["username"];
-
-      if (await bcrypt.compare(username, hashname)) {
-        exist = true;
-        reftoken = item["refreshToken"];
+      let hashname= item['username']
+      
+      if( username===hashname){
+        exist=true;
+        reftoken = item['refreshToken'];
       }
+     
     }
-    if (exist == true) {
-      let accessToken = await genOnlyAccess(username);
+    console.log(exist)
+    if (exist==true){
+      let accessToken= await genOnlyAccess(username);
       const response = {
-        accessToken: accessToken,
-        refreshToken: reftoken,
-        party: partyCopy[atIndex],
-      };
+        accessToken:accessToken,
+        refreshToken:reftoken,
+        party: partyCopy[atIndex]
+      }
       let membersArr = partyCopy[atIndex].members;
-
-      // Updating the members array in mongo.
-      let unameArray = membersArr;
-      unameArray.push(hashedUsername);
-      const updatedArray = {
-        members: unameArray,
-      };
-      partyCol.updateOne(
-        { partyCode: partyCopy[atIndex].partyCode },
-        { $set: updatedArray }
-      );
-      console.log("Added the user to mongo array for the party.");
-      // Sending the response to the user.
-      res.json(response);
-    } else {
-      const tokens = await genAccess(tokenUser, username);
-
-      const response = {
-        accessToken: tokens[0],
-        refreshToken: tokens[1],
-        party: partyCopy[atIndex],
-      };
-
-      let membersArr = partyCopy[atIndex].members;
-
-      // Updating the members array in mongo.
-      let unameArray = membersArr;
-      unameArray.push(hashedUsername);
-      const updatedArray = {
-        members: unameArray,
-      };
-      partyCol.updateOne(
-        { partyCode: partyCopy[atIndex].partyCode },
-        { $set: updatedArray }
-      );
-      console.log("Added the user to mongo array for the party.");
-      // Sending the response to the user.
-      res.json(response);
+      let exist2=false
+      for (let i in membersArr){
+        member = membersArr[i];
+        if (username===member){
+            exist2=true
+        }
+      }
+    // Updating the members array in mongo.
+    let unameArray = membersArr;
+    if (exist2==false){
+      unameArray.push(username);
     }
+    
+    const updatedArray = {
+      members: unameArray,
+    };
+    partyCol.updateOne(
+      { partyCode: partyCopy[atIndex].partyCode },
+      { $set: updatedArray }
+    );
+    console.log("Added the user to mongo array for the party.");
+    // Sending the response to the user.
+    res.json(response);
+    }
+    else{
+      const tokens = await genAccess(tokenUser,username);
+  
+      const response = {
+      accessToken: tokens[0],
+      refreshToken: tokens[1],
+      party: partyCopy[atIndex],
+      };
+      
+      let membersArr = partyCopy[atIndex].members;
+      let exist2=false
+      for (let i in membersArr){
+        member = membersArr[i];
+        if (username===member){
+            exist2=true
+        }
+      }
+    // Updating the members array in mongo.
+    let unameArray = membersArr;
+    if (exist2==false){
+      unameArray.push(username);
+    }
+    
+    const updatedArray = {
+      members: unameArray,
+    };
+    partyCol.updateOne(
+      { partyCode: partyCopy[atIndex].partyCode },
+      { $set: updatedArray }
+    );
+    console.log("Added the user to mongo array for the party.");
+    // Sending the response to the user.
+    res.json(response);
+    }
+    
+
+    
   } else {
     let errorFinding = "Party Not Found!";
     console.log(errorFinding);
@@ -298,10 +339,42 @@ app.get("/getParty", async (req, res) => {
 });
 
 // The user logs out
+// The user logs out
 app.delete("/userlogout", async (req, res) => {
   const reftoken = req.body.token;
   const partyCode = req.body.partyCode;
   const userName = req.body.userName;
+  let partycursor = partyCol.find();
+  let parties = await partycursor.toArray();
+  let partyCopy = parties;
+
+  for (i in parties.length) {
+    parties[i] = parties[i].partyCode;
+  }
+
+  let [exists, atIndex] = await checkCode(partyCode, parties);
+  if (exists) {
+    let party = partyCopy[atIndex];
+    let members1 = party["members"];
+    let membersupdated = [];
+    for (let member in members1) {
+     
+      if (userName===members1[member]) {
+      } else {
+        membersupdated.push(members1[member]);
+      }
+    }
+    const filter = { partyCode: partyCopy[atIndex]["partyCode"] };
+    const options = { upsert: true };
+    const updateDoc = {
+      $set: {
+        members: membersupdated,
+      },
+    };
+    const result = await partyCol.updateOne(filter, updateDoc, options);
+    console.log(
+      `${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`
+    );
   let cursor = secretCol.find();
   let secrets = await cursor.toArray();
   console.log("secrets created");
@@ -321,36 +394,7 @@ app.delete("/userlogout", async (req, res) => {
 
   console.log("Secret Removed");
   //replacing the mongo parties accordingly and send back to landing page
-  let partycursor = partyCol.find();
-  let parties = await partycursor.toArray();
-  let partyCopy = parties;
-
-  for (i in parties.length) {
-    parties[i] = parties[i].partyCode;
-  }
-
-  let [exists, atIndex] = await checkCode(partyCode, parties);
-  if (exists) {
-    let party = partyCopy[atIndex];
-    let members1 = party["members"];
-    let membersupdated = [];
-    for (let member in members1) {
-      if (await bcrypt.compare(userName, members1[member])) {
-      } else {
-        membersupdated.push(members1[member]);
-      }
-    }
-    const filter = { partyCode: partyCopy[atIndex]["partyCode"] };
-    const options = { upsert: true };
-    const updateDoc = {
-      $set: {
-        members: membersupdated,
-      },
-    };
-    const result = await partyCol.updateOne(filter, updateDoc, options);
-    console.log(
-      `${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`
-    );
+  
   } else {
     res.sendStatus(403);
   }
@@ -397,7 +441,7 @@ const genOnlyAccess = async (user) => {
   let accessarray = await secretCursor.toArray();
   let accessTokenSecret = crypto.randomBytes(64).toString("hex");
   for (let person in accessarray) {
-    if (await bcrypt.compare(user, accessarray[person]["username"])) {
+    if (user===accessarray[person]['username']) {
       accessTokenSecret = accessarray[person]["accessSecret"];
     }
   }
@@ -433,7 +477,7 @@ const genAccess = async (user, name) => {
   exist = false;
   for (let secret in secrets) {
     item = secrets[secret];
-    if (await bcrypt.compare(name, item["username"])) {
+    if (name===item['username']) {
       exist = true;
     }
   }
@@ -449,7 +493,6 @@ const genAccess = async (user, name) => {
   }
   return [accessToken, refreshToken];
 };
-
 //**************************************************************************************** */
 // SONG MANAGEMENT
 //**************************************************************************************** */

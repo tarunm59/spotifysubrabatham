@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Container, Form, Button } from "react-bootstrap";
 import SpotifyWebApi from "spotify-web-api-node";
 import TrackSearchResult from "./TrackSearchResult";
-import Songplay from "./Songplay";
+import Songplay from "./songplay";
 import TrackComponent from "./TrackComponent";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faX } from "@fortawesome/free-solid-svg-icons";
